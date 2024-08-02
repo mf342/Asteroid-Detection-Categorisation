@@ -1,0 +1,188 @@
+#import matplotlib.pyplot as plt
+#from astropy.io import fits
+#from astropy.visualization import ZScaleInterval, LinearStretch, ImageNormalize
+
+# Open the FITS file
+#file_path = 'Skymapper_0882916638_2023-05-11T18_52_22_30_red.fits.fz'
+#with fits.open(file_path) as hdul:
+    # Display information about the FITS file
+ #   hdul.info()
+
+    # Assume the image data is in the primary HDU or the first extension
+  #  data = hdul[1].data if len(hdul) > 1 else hdul[0].data
+
+# Set up the normalization using zscale and linear scaling
+#interval = ZScaleInterval()
+#vmin, vmax = interval.get_limits(data)
+#norm = ImageNormalize(vmin=vmin, vmax=vmax, stretch=LinearStretch())
+
+# Plot the original and scaled image data side by side
+#fig, axes = plt.subplots(1, 2, figsize=(10, 5))
+
+# Original image
+#axes[0].imshow(data, cmap='gray', origin='lower')
+#axes[0].set_title('Original Skymapper Image')
+#axes[0].axis('off')
+
+# Scaled image
+#im = axes[1].imshow(data, cmap='gray', origin='lower', norm=norm)
+#axes[1].set_title('Skymapper Image with ZScale and Linear Scaling')
+#axes[1].axis('off')
+
+#plt.show()
+
+#####################################
+
+#import matplotlib.pyplot as plt
+#from astropy.io import fits
+#from astropy.visualization import ZScaleInterval, LinearStretch, ImageNormalize
+#import numpy as np
+#import random
+
+# Function to add streaks to the image
+#def add_streaks(data, num_streaks=10):
+#    for _ in range(num_streaks):
+#        length = random.randint(10, 20)
+#        width = random.randint(1, 3)
+#        angle = random.uniform(0, 2*np.pi)
+#        center_x = random.randint(0, data.shape[1])
+#        center_y = random.randint(0, data.shape[0])
+
+#       for w in range(-width//2, width//2 + 1):
+#            for l in range(-length//2, length//2 + 1):
+#                x = int(center_x + l * np.cos(angle) - w * np.sin(angle))
+#                y = int(center_y + l * np.sin(angle) + w * np.cos(angle))
+#               if 0 <= x < data.shape[1] and 0 <= y < data.shape[0]:
+#                    data[y, x] = np.max(data)  # Bright streak
+#
+#   return data
+
+# Open the FITS file
+#file_path = 'Skymapper_0882916638_2023-05-11T18_52_22_30_red.fits.fz'
+#with fits.open(file_path) as hdul:
+    # Display information about the FITS file
+#    hdul.info()
+
+    # Assume the image data is in the primary HDU or the first extension
+#    data = hdul[1].data if len(hdul) > 1 else hdul[0].data
+
+# Add streaks to the data
+#data_with_streaks = add_streaks(data.copy())
+
+# Set up the normalization using zscale and linear scaling
+#interval = ZScaleInterval()
+#vmin, vmax = interval.get_limits(data_with_streaks)
+#norm = ImageNormalize(vmin=vmin, vmax=vmax, stretch=LinearStretch())
+
+# Plot the original and modified image data side by side
+#fig, axes = plt.subplots(1, 2, figsize=(20, 10))
+
+# Original image
+#axes[0].imshow(data, cmap='gray', origin='lower')
+#axes[0].set_title('Original Skymapper Image')
+#axes[0].axis('off')
+
+# Modified image with streaks
+#im = axes[1].imshow(data_with_streaks, cmap='gray', origin='lower', norm=norm)
+#axes[1].set_title('Skymapper Image with Asteroid Streaks')
+#axes[1].axis('off')
+
+# Save the figure
+#output_path = 'skymapper_image_with_streaks.png'
+#plt.savefig(output_path)
+
+#plt.show()
+
+#print(f"The image has been saved to {output_path}")
+
+##################################################
+
+import matplotlib.pyplot as plt
+from matplotlib.patches import Circle
+from astropy.io import fits
+from astropy.visualization import ZScaleInterval, LinearStretch, ImageNormalize
+import numpy as np
+import random
+
+# Function to add streaks to the image and return their locations
+def add_streaks(data, num_streaks=10):
+    streaks = []
+    for _ in range(num_streaks):
+        length = random.randint(10, 20)
+        width = random.randint(1, 3)
+        angle = random.uniform(0, 2*np.pi)
+        center_x = random.randint(0, data.shape[1] - 1)
+        center_y = random.randint(0, data.shape[0] - 1)
+
+        streaks.append((center_x, center_y, length, width, angle))
+
+        for w in range(-width//2, width//2 + 1):
+            for l in range(-length//2, length//2 + 1):
+                x = int(center_x + l * np.cos(angle) - w * np.sin(angle))
+                y = int(center_y + l * np.sin(angle) + w * np.cos(angle))
+                if 0 <= x < data.shape[1] and 0 <= y < data.shape[0]:
+                    data[y, x] = np.max(data)  # Bright streak
+
+    return data, streaks
+
+# Open the FITS file
+file_path = 'Skymapper_0882916638_2023-05-11T18_52_22_30_red.fits (1).fz'
+with fits.open(file_path) as hdul:
+    # Display information about the FITS file
+    hdul.info()
+
+    # Assume the image data is in the primary HDU or the first extension
+    data = hdul[1].data if len(hdul) > 1 else hdul[0].data
+
+# Add streaks to the data and get their locations
+data_with_streaks, streaks = add_streaks(data.copy())
+
+# Set up the normalization using zscale and linear scaling
+interval = ZScaleInterval()
+vmin, vmax = interval.get_limits(data_with_streaks)
+norm = ImageNormalize(vmin=vmin, vmax=vmax, stretch=LinearStretch())
+
+# 1. Plot the original image with streaks and add coordinates
+fig1, ax1 = plt.subplots(figsize=(10, 10))
+ax1.imshow(data_with_streaks, cmap='gray', origin='lower', norm=norm)
+ax1.set_title('Skymapper Image with Asteroid Streaks')
+ax1.set_xlabel('X Coordinate')
+ax1.set_ylabel('Y Coordinate')
+
+output_path1 = 'skymapper_image_with_streaks.png'
+plt.savefig(output_path1)
+
+# 2. Plot the image with streaks identified by circles and add coordinates
+fig2, ax2 = plt.subplots(figsize=(10, 10))
+ax2.imshow(data_with_streaks, cmap='gray', origin='lower', norm=norm)
+for (center_x, center_y, length, width, angle) in streaks:
+    circ = Circle((center_x, center_y), radius=10, edgecolor='red', facecolor='none', linewidth=2)
+    ax2.add_patch(circ)
+ax2.set_title('Skymapper Image with Identified Streaks')
+ax2.set_xlabel('X Coordinate')
+ax2.set_ylabel('Y Coordinate')
+
+output_path2 = 'skymapper_image_with_identified_streaks.png'
+plt.savefig(output_path2)
+
+# 3. Plot zoomed-in views of each asteroid streak and add coordinates
+fig3, axs = plt.subplots(2, 5, figsize=(20, 8))
+for i, (center_x, center_y, length, width, angle) in enumerate(streaks):
+    x_min = max(center_x - 20, 0)
+    x_max = min(center_x + 20, data.shape[1])
+    y_min = max(center_y - 20, 0)
+    y_max = min(center_y + 20, data.shape[0])
+
+    ax = axs[i // 5, i % 5]
+    ax.imshow(data_with_streaks[y_min:y_max, x_min:x_max], cmap='gray', origin='lower', norm=norm)
+    ax.set_xlabel(f'X: {x_min} to {x_max}')
+    ax.set_ylabel(f'Y: {y_min} to {y_max}')
+    ax.set_title(f'Streak {i+1}')
+    ax.axis('on')
+
+output_zoom_path = 'skymapper_image_zoomed_streaks.png'
+plt.savefig(output_zoom_path)
+
+plt.show()
+
+print(f"The images have been saved to:\n{output_path1}\n{output_path2}\n{output_zoom_path}")
