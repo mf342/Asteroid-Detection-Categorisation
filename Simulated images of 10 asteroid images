@@ -52,35 +52,69 @@ interval = ZScaleInterval()
 vmin, vmax = interval.get_limits(data_with_streaks)
 norm = ImageNormalize(vmin=vmin, vmax=vmax, stretch=AsinhStretch())
 
-# Create a figure to display all images together
-fig, axes = plt.subplots(1, 3, figsize=(30, 10))
+# 1. Plot the original image without streaks
+fig0, ax0 = plt.subplots(figsize=(10, 10))
+ax0.imshow(data, cmap='gray', origin='lower')
+ax0.set_title('Original Skymapper Image')
+ax0.set_xlabel('X Coordinate')
+ax0.set_ylabel('Y Coordinate')
 
-# Plot the original image without streaks
-axes[0].imshow(data, cmap='gray', origin='lower')
-axes[0].set_title('Original Skymapper Image')
-axes[0].set_xlabel('X Coordinate')
-axes[0].set_ylabel('Y Coordinate')
+output_path0 = os.path.join(output_dir, '1. original_skymapper_image.png')
+plt.savefig(output_path0)
 
-# Plot the image with streaks but without scaling
-axes[1].imshow(data_with_streaks, cmap='gray', origin='lower')
-axes[1].set_title('Skymapper Image with Asteroid Streaks (No Scaling)')
-axes[1].set_xlabel('X Coordinate')
-axes[1].set_ylabel('Y Coordinate')
+# 2. Plot the image with streaks but without scaling
+fig1_no_scale, ax1_no_scale = plt.subplots(figsize=(10, 10))
+ax1_no_scale.imshow(data_with_streaks, cmap='gray', origin='lower')
+ax1_no_scale.set_title('Skymapper Image with Asteroid Streaks (No Scaling)')
+ax1_no_scale.set_xlabel('X Coordinate')
+ax1_no_scale.set_ylabel('Y Coordinate')
 
-# Plot the original image with streaks and add coordinates (with scaling)
-axes[2].imshow(data_with_streaks, cmap='gray', origin='lower', norm=norm)
-axes[2].set_title('Skymapper Image with Asteroid Streaks (Scaled)')
-axes[2].set_xlabel('X Coordinate')
-axes[2].set_ylabel('Y Coordinate')
+output_path1_no_scale = os.path.join(output_dir, '2. skymapper_image_with_streaks_no_scale.png')
+plt.savefig(output_path1_no_scale)
 
-# Save the figure
-output_path_all = os.path.join(output_dir, 'skymapper_images_comparison.png')
-plt.savefig(output_path_all)
+# 3. Plot the original image with streaks and add coordinates (with scaling)
+fig1, ax1 = plt.subplots(figsize=(10, 10))
+ax1.imshow(data_with_streaks, cmap='gray', origin='lower', norm=norm)
+ax1.set_title('Skymapper Image with Asteroid Streaks (Scaled)')
+ax1.set_xlabel('X Coordinate')
+ax1.set_ylabel('Y Coordinate')
 
-# Show the plot
-plt.show()
+output_path1 = os.path.join(output_dir, '3. skymapper_image_with_streaks.png')
+plt.savefig(output_path1)
 
-# Create an image with grid lines for sub-images (with scaling)
+# 4. Plot the image with streaks identified by circles and add coordinates (with scaling)
+fig2, ax2 = plt.subplots(figsize=(10, 10))
+ax2.imshow(data_with_streaks, cmap='gray', origin='lower', norm=norm)
+for (center_x, center_y, length, width, angle, magnitude, velocity) in streaks:
+    circ = Circle((center_x, center_y), radius=10, edgecolor='red', facecolor='none', linewidth=2)
+    ax2.add_patch(circ)
+ax2.set_title('Skymapper Image with Identified Streaks (Scaled)')
+ax2.set_xlabel('X Coordinate')
+ax2.set_ylabel('Y Coordinate')
+
+output_path2 = os.path.join(output_dir, '4. skymapper_image_with_identified_streaks.png')
+plt.savefig(output_path2)
+
+# 5. Plot zoomed-in views of each asteroid streak and add coordinates (with scaling)
+fig3, axs = plt.subplots(2, 5, figsize=(20, 8))
+fig3.subplots_adjust(hspace=0.4, wspace=0.4)
+for i, (center_x, center_y, length, width, angle, magnitude, velocity) in enumerate(streaks):
+    x_min = max(center_x - 20, 0)
+    x_max = min(center_x + 20, data.shape[1])
+    y_min = max(center_y - 20, 0)
+    y_max = min(center_y + 20, data.shape[0])
+
+    ax = axs[i // 5, i % 5]
+    ax.imshow(data_with_streaks[y_min:y_max, x_min:x_max], cmap='gray', origin='lower', norm=norm)
+    ax.set_xlabel(f'X: {x_min} to {x_max}')
+    ax.set_ylabel(f'Y: {y_min} to {y_max}')
+    ax.set_title(f'Streak {i+1}\nX: {center_x}, Y: {center_y}, Len: {length}, Wid: {width}\nAng: {angle:.2f}, Mag: {magnitude:.2f}, Vel: {velocity:.2f}')
+    ax.axis('on')
+
+output_zoom_path = os.path.join(output_dir, '5. skymapper_image_zoomed_streaks.png')
+plt.savefig(output_zoom_path)
+
+# 6. Create an image with grid lines for sub-images (with scaling)
 fig5, ax5 = plt.subplots(figsize=(10, 10))
 ax5.imshow(data_with_streaks, cmap='gray', origin='lower', norm=norm)
 ax5.set_title('Skymapper Image with Grid (Scaled)')
@@ -104,7 +138,7 @@ for i in range(grid_rows):
         ax5.text(j * subimage_width + subimage_width / 2, i * subimage_height + subimage_height / 2, 
                  f'{(grid_rows - 1 - i) * grid_cols + j + 1}', color='yellow', fontsize=12, ha='center', va='center')
 
-output_grid_path = os.path.join(output_dir, 'skymapper_image_with_grid.png')
+output_grid_path = os.path.join(output_dir, '6. skymapper_image_with_grid.png')
 plt.savefig(output_grid_path)
 
 # 7. Split the entire image into non-overlapping sub-images based on the grid (with scaling)
@@ -129,16 +163,6 @@ for i in range(grid_rows):
         ax.set_title(f'Sub-image {(grid_rows - 1 - i) * grid_cols + j + 1}')
         ax.axis('off')
 
-output_subimages_path = os.path.join(output_dir, 'skymapper_image_subimages.png')
+output_subimages_path = os.path.join(output_dir, '7. skymapper_image_subimages.png')
 plt.savefig(output_subimages_path)
-
-# Show the plot
 plt.show()
-
-# Create a DataFrame for the streaks and save as CSV
-streaks_df = pd.DataFrame(streaks, columns=['Center_X', 'Center_Y', 'Length', 'Width', 'Angle', 'Magnitude', 'Velocity'])
-csv_output_path = os.path.join(output_dir, 'skymapper_asteroid_streaks.csv')
-streaks_df.to_csv(csv_output_path, index=False)
-
-# Print file paths
-print(output_path_all, output_grid_path, output_subimages_path, csv_output_path)
