@@ -1,0 +1,144 @@
+import os
+import matplotlib.pyplot as plt
+from matplotlib.patches import Circle, Rectangle
+from astropy.io import fits
+from astropy.visualization import ZScaleInterval, AsinhStretch, ImageNormalize
+import numpy as np
+import pandas as pd
+import random
+
+# Ensure the directory exists
+output_dir = 'asteroids'
+os.makedirs(output_dir, exist_ok=True)
+
+# Open the FITS file
+file_path = os.path.join(output_dir, 'Skymapper_0882916638_2023-05-11T18_52_22_30_red.fits.fz')
+with fits.open(file_path) as hdul:
+    data = hdul[1].data if len(hdul) > 1 else hdul[0].data
+
+# Function to add streaks to the image and return their locations
+def add_streaks(data, streak_params):
+    streaks = []
+    for params in streak_params:
+        center_x, center_y, length, width, angle, magnitude, velocity = params
+        streaks.append((center_x, center_y, length, width, angle, magnitude, velocity))
+
+        for w in range(-width//2, width//2 + 1):
+            for l in range(-length//2, length//2 + 1):
+                x = int(center_x + l * np.cos(angle) - w * np.sin(angle))
+                y = int(center_y + l * np.sin(angle) + w * np.cos(angle))
+                if 0 <= x < data.shape[1] and 0 <= y < data.shape[0]:
+                    data[y, x] = np.max(data)  # Bright streak
+
+    return data, streaks
+
+# Generate a single consistent set of asteroid streaks
+streak_params = []
+for _ in range(10):
+    length = random.randint(20, 26)
+    width = random.randint(1, 3)
+    angle = random.uniform(0, 2*np.pi)
+    center_x = random.randint(0, data.shape[1] - 1)  # Use the actual image dimensions
+    center_y = random.randint(0, data.shape[0] - 1)
+    magnitude = random.uniform(20, 26)
+    velocity = random.uniform(1, 80)
+    streak_params.append((center_x, center_y, length, width, angle, magnitude, velocity))
+
+# Add streaks to the data and get their locations
+data_with_streaks, streaks = add_streaks(data.copy(), streak_params)
+
+# Apply ZScale and Asinh scaling
+interval = ZScaleInterval()
+vmin, vmax = interval.get_limits(data_with_streaks)
+norm = ImageNormalize(vmin=vmin, vmax=vmax, stretch=AsinhStretch())
+
+# Create a figure to display all images together
+fig, axes = plt.subplots(1, 3, figsize=(30, 10))
+
+# Plot the original image without streaks
+axes[0].imshow(data, cmap='gray', origin='lower')
+axes[0].set_title('Original Skymapper Image')
+axes[0].set_xlabel('X Coordinate')
+axes[0].set_ylabel('Y Coordinate')
+
+# Plot the image with streaks but without scaling
+axes[1].imshow(data_with_streaks, cmap='gray', origin='lower')
+axes[1].set_title('Skymapper Image with Asteroid Streaks (No Scaling)')
+axes[1].set_xlabel('X Coordinate')
+axes[1].set_ylabel('Y Coordinate')
+
+# Plot the original image with streaks and add coordinates (with scaling)
+axes[2].imshow(data_with_streaks, cmap='gray', origin='lower', norm=norm)
+axes[2].set_title('Skymapper Image with Asteroid Streaks (Scaled)')
+axes[2].set_xlabel('X Coordinate')
+axes[2].set_ylabel('Y Coordinate')
+
+# Save the figure
+output_path_all = os.path.join(output_dir, 'skymapper_images_comparison.png')
+plt.savefig(output_path_all)
+
+# Show the plot
+plt.show()
+
+# Create an image with grid lines for sub-images (with scaling)
+fig5, ax5 = plt.subplots(figsize=(10, 10))
+ax5.imshow(data_with_streaks, cmap='gray', origin='lower', norm=norm)
+ax5.set_title('Skymapper Image with Grid (Scaled)')
+
+# Adjust the subimage size based on the actual dimensions of the image
+grid_rows, grid_cols = 5, 5  # Define the grid size
+subimage_height = data_with_streaks.shape[0] // grid_rows
+subimage_width = data_with_streaks.shape[1] // grid_cols
+
+# Draw grid lines and sub-image numbers
+for i in range(grid_rows + 1):
+    ax5.axhline(i * subimage_height, color='yellow', linestyle='--', linewidth=1)
+for j in range(grid_cols + 1):
+    ax5.axvline(j * subimage_width, color='yellow', linestyle='--', linewidth=1)
+
+for i in range(grid_rows):
+    for j in range(grid_cols):
+        rect = Rectangle((j * subimage_width, i * subimage_height), subimage_width, subimage_height, 
+                         linewidth=1, edgecolor='yellow', facecolor='none')
+        ax5.add_patch(rect)
+        ax5.text(j * subimage_width + subimage_width / 2, i * subimage_height + subimage_height / 2, 
+                 f'{(grid_rows - 1 - i) * grid_cols + j + 1}', color='yellow', fontsize=12, ha='center', va='center')
+
+output_grid_path = os.path.join(output_dir, 'skymapper_image_with_grid.png')
+plt.savefig(output_grid_path)
+
+# 7. Split the entire image into non-overlapping sub-images based on the grid (with scaling)
+fig6, axs = plt.subplots(grid_rows, grid_cols, figsize=(15, 15))
+fig6.subplots_adjust(hspace=0.4, wspace=0.4)
+for i in range(grid_rows):
+    for j in range(grid_cols):
+        x_min = j * subimage_width
+        x_max = (j + 1) * subimage_width
+        y_min = (grid_rows - 1 - i) * subimage_height
+        y_max = (grid_rows - i) * subimage_height
+
+        ax = axs[i, j]
+        ax.imshow(data_with_streaks[y_min:y_max, x_min:x_max], cmap='gray', origin='lower', norm=norm)
+
+        # Add circles for streaks within the subimage
+        for (center_x, center_y, length, width, angle, magnitude, velocity) in streaks:
+            if x_min <= center_x < x_max and y_min <= center_y < y_max:
+                circ = Circle((center_x - x_min, center_y - y_min), radius=10, edgecolor='red', facecolor='none', linewidth=2)
+                ax.add_patch(circ)
+
+        ax.set_title(f'Sub-image {(grid_rows - 1 - i) * grid_cols + j + 1}')
+        ax.axis('off')
+
+output_subimages_path = os.path.join(output_dir, 'skymapper_image_subimages.png')
+plt.savefig(output_subimages_path)
+
+# Show the plot
+plt.show()
+
+# Create a DataFrame for the streaks and save as CSV
+streaks_df = pd.DataFrame(streaks, columns=['Center_X', 'Center_Y', 'Length', 'Width', 'Angle', 'Magnitude', 'Velocity'])
+csv_output_path = os.path.join(output_dir, 'skymapper_asteroid_streaks.csv')
+streaks_df.to_csv(csv_output_path, index=False)
+
+# Print file paths
+print(output_path_all, output_grid_path, output_subimages_path, csv_output_path)
