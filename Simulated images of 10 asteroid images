@@ -1,77 +1,76 @@
 #Importing necessary libraries 
-import os #interacts with the operating system for directory creation
-import matplotlib.pyplot as plt #for visualization
-from matplotlib.patches import Circle, Rectangle #To create patches for highlightening areas
-from astropy.io import fits #for reading and writing FITS (standard data format in astronomy) files
+import os                                                                      #interacts with the operating system for directory creation
+import matplotlib.pyplot as plt                                                #for visualization
+from matplotlib.patches import Circle, Rectangle                               #To create patches for highlightening areas
+from astropy.io import fits                                                    #for reading and writing FITS (standard data format in astronomy) files
 from astropy.visualization import ZScaleInterval, AsinhStretch, ImageNormalize #Image normalization and stretching
-import numpy as np #for mathematical operation 
-import pandas as pd #for data structures and data analysis
-import random #generates random numbers
+import numpy as np                                                             #for mathematical operation 
+import pandas as pd                                                            #for data structures and data analysis
+import random                                                                  #generates random numbers
 
 #Creating a folder to store all the output images
 output_dir = 'asteroids'
-os.makedirs(output_dir, exist_ok=True) #creates the directory if not present, but if, then no error should be raised
+os.makedirs(output_dir, exist_ok=True)                                         #creates the directory if not present, but if, then no error should be raised
 
 # Open the FITS file
 file_path = os.path.join(output_dir, 'Skymapper_0882916638_2023-05-11T18_52_22_30_red.fits.fz')
-with fits.open(file_path) as hdul: #open the file and assign to hdul
-    data = hdul[1].data if len(hdul) > 1 else hdul[0].data #retriving data from the second extensions because it is not present in the first
+with fits.open(file_path) as hdul:                                             #open the file and assign to hdul
+    data = hdul[1].data if len(hdul) > 1 else hdul[0].data                     #retriving data from the second extensions because it is not present in the first
 
 # Converting magnitude of the asteroid streaks to brightness levels #Reference EUCLID paper
 def magnitude_to_brightness(magnitude):
     if 20.3 <= magnitude <= 22.2:
-        return 0.9  # High brightness
+        return 0.9                                                             # High brightness
     elif 22.6 <= magnitude <= 23.9:
-        return 0.3  # Medium brightness
+        return 0.3                                                             # Medium brightness
     elif magnitude >= 25.0:
-        return 0.0  # Practically invisible
-    return 0.1  # for all other magnitudes
+        return 0.0                                                             # Practically invisible
+    return 0.1                                                                 # for all other magnitudes
 
 # Function to add streaks to the image and return their locations - new streaks created for each simulation 
-#Streaks are created at random location with random orientation from 0◦ to 360◦ (clockwise from east)
-# Wiht random magnitudes ranging from 20-26 and apparent velocity around 1 to 80 −1 arcsech^-1 making the streaks with high and low magnitude as well as almost/completely invisible across all exposures (brightness variation is not accounted in the simulated as will be seen in a few asteroid streaks practically), so as to assist in create a detection mode
+# Streaks are created at random location with random orientation from 0◦ to 360◦ (clockwise from east)
+# Wiht random magnitudes ranging from 20-26 and apparent velocity around 1 to 80 −1 arcsech^-1 
+# The magnitudes will make the asteroids streaks very bright, slight bright and almost/completely invisible 
+# Brightness variation is not accounted in the simulated 
 
 def add_streaks(data, streak_params):
-    streaks = [] #initializing an empty list to storethe streak parameters
+    streaks = []                                                               #initializing an empty list to store the streak parameters
     for params in streak_params: #iterating on each set of streaks
         center_x, center_y, length, width, angle, magnitude, velocity = params #The parameters defined for each streak
         streaks.append((center_x, center_y, length, width, angle, magnitude, velocity)) #Adding the parameters to the streak list
-        brightness = magnitude_to_brightness(magnitude) * np.max(data)  #convert magnitude to brightness and scale to maximum pixel value
-        for w in range(-width//2, width//2 + 1): #iterate on width of streak
-            for l in range(-length//2, length//2 + 1):
-                x = int(center_x + l * np.cos(angle) - w * np.sin(angle))
-                y = int(center_y + l * np.sin(angle) + w * np.cos(angle))
-                if 0 <= x < data.shape[1] and 0 <= y < data.shape[0]:
-                    data[y, x] = brightness  # Adjusted brightness
-    return data, streaks
-
-for w in range(-width//2, width//2 + 1): Iterates over the width of the streak.
-for l in range(-length//2, length//2 + 1): Iterates over the length of the streak.
-x = int(center_x + l * np.cos(angle) - w * np.sin(angle)): Calculates the x-coordinate of the streak pixel.
-y = int(center_y + l * np.sin(angle) + w * np.cos(angle)): Calculates the y-coordinate of the streak pixel.
-if 0 <= x < data.shape[1] and 0 <= y < data.shape[0]: Ensures the pixel coordinates are within the image bounds.
-data[y, x] = brightness: Sets the pixel brightness.
-return data, streaks: Returns the modified data and the list of streaks.
+        brightness = magnitude_to_brightness(magnitude) * np.max(data)         #convert magnitude to brightness and scale to maximum pixel value
+        for w in range(-width//2, width//2 + 1):                               #iterate on width of streak
+            for l in range(-length//2, length//2 + 1):                         #iterate on length of streak
+                x = int(center_x + l * np.cos(angle) - w * np.sin(angle))      #calculate x-coordinate 
+                y = int(center_y + l * np.sin(angle) + w * np.cos(angle))      #calculate y-coordinate 
+                if 0 <= x < data.shape[1] and 0 <= y < data.shape[0]:          #pixel coordinates must be within the image 
+                    data[y, x] = brightness                                    #brightness set for the pixels
+    return data, streaks                                                       #return the modified image and the data on the streaks
 
 # Generate a single consistent set of asteroid streaks
-streak_params = []
-for _ in range(10):
-    length = random.randint(20, 26)
-    width = random.randint(1, 3)
-    angle = random.uniform(0, 2*np.pi)
-    center_x = random.randint(0, data.shape[1] - 1)  # Use the actual image dimensions
-    center_y = random.randint(0, data.shape[0] - 1)
-    magnitude = random.uniform(20, 26)
-    velocity = random.uniform(1, 80)
-    streak_params.append((center_x, center_y, length, width, angle, magnitude, velocity))
+streak_params = []                                                             #initializing empty list to store streak parameters
+for _ in range(10):                                                            #Looping 10 times to create 10 streaks 
+    length = random.randint(20, 26)                                            #length of streak 
+    width = random.randint(1, 3)                                               #width of streak 
+    angle = random.uniform(0, 2*np.pi)                                         #angle of steak
+    center_x = random.randint(0, data.shape[1] - 1)                            # Select a random location in the FITS image 
+    center_y = random.randint(0, data.shape[0] - 1)                            #Select a random location in the FITS image 
+    magnitude = random.uniform(20, 26)                                         #Random magnitude                                                   
+    velocity = random.uniform(1, 80)                                           #Random velocity
+    streak_params.append((center_x, center_y, length, width, angle, magnitude, velocity)) #Add the generated parameters to the streak_params list
 
-# Add streaks to the data and get their locations
-data_with_streaks, streaks = add_streaks(data.copy(), streak_params)
+# Add streaks to the data and get their locations, data.copy() is keeping a copy of original image
+data_with_streaks, streaks = add_streaks(data.copy(), streak_params)           #The add_streak function adds streaks to the image     
 
-# Apply ZScale and Asinh scaling
+#Asinh (Arcsinh): The tuning enhances both faint and bright features simultaneously.
+#Zscale: Automatic contrast adjustment, helps reduce background dust.
 interval = ZScaleInterval()
 vmin, vmax = interval.get_limits(data_with_streaks)
 norm = ImageNormalize(vmin=vmin, vmax=vmax, stretch=AsinhStretch())
+
+interval = ZScaleInterval(): Initializes a ZScaleInterval object for contrast scaling.
+vmin, vmax = interval.get_limits(data_with_streaks): Calculates the minimum and maximum pixel values using ZScale.
+norm = ImageNormalize(vmin=vmin, vmax=vmax, stretch=AsinhStretch()): Creates an ImageNormalize object with Asinh stretch and the calculated vmin and vmax values.
 
 # 1. Plot the original image without streaks
 fig0, ax0 = plt.subplots(figsize=(10, 10))
