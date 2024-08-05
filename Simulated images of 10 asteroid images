@@ -1,22 +1,23 @@
-import os
-import matplotlib.pyplot as plt
-from matplotlib.patches import Circle, Rectangle
-from astropy.io import fits
-from astropy.visualization import ZScaleInterval, AsinhStretch, ImageNormalize
-import numpy as np
-import pandas as pd
-import random
+#Importing necessary libraries 
+import os #interacts with the operating system for directory creation
+import matplotlib.pyplot as plt #for visualization
+from matplotlib.patches import Circle, Rectangle #To create patches for highlightening areas
+from astropy.io import fits #for reading and writing FITS (standard data format in astronomy) files
+from astropy.visualization import ZScaleInterval, AsinhStretch, ImageNormalize #Image normalization and stretching
+import numpy as np #for mathematical operation 
+import pandas as pd #for data structures and data analysis
+import random #generates random numbers
 
-# Ensure the directory exists
+#Creating a folder to store all the output images
 output_dir = 'asteroids'
-os.makedirs(output_dir, exist_ok=True)
+os.makedirs(output_dir, exist_ok=True) #creates the directory if not present, but if, then no error should be raised
 
 # Open the FITS file
 file_path = os.path.join(output_dir, 'Skymapper_0882916638_2023-05-11T18_52_22_30_red.fits.fz')
-with fits.open(file_path) as hdul:
-    data = hdul[1].data if len(hdul) > 1 else hdul[0].data
+with fits.open(file_path) as hdul: #open the file and assign to hdul
+    data = hdul[1].data if len(hdul) > 1 else hdul[0].data #retriving data from the second extensions because it is not present in the first
 
-# Function to convert magnitude to brightness
+# Converting magnitude of the asteroid streaks to brightness levels #Reference EUCLID paper
 def magnitude_to_brightness(magnitude):
     if 20.3 <= magnitude <= 22.2:
         return 0.9  # High brightness
@@ -24,25 +25,33 @@ def magnitude_to_brightness(magnitude):
         return 0.3  # Medium brightness
     elif magnitude >= 25.0:
         return 0.0  # Practically invisible
-    return 0.1  # Default for other magnitudes
+    return 0.1  # for all other magnitudes
 
-# Function to add streaks to the image and return their locations
+# Function to add streaks to the image and return their locations - new streaks created for each simulation 
+#Streaks are created at random location with random orientation from 0◦ to 360◦ (clockwise from east)
+# Wiht random magnitudes ranging from 20-26 and apparent velocity around 1 to 80 −1 arcsech^-1 making the streaks with high and low magnitude as well as almost/completely invisible across all exposures (brightness variation is not accounted in the simulated as will be seen in a few asteroid streaks practically), so as to assist in create a detection mode
+
 def add_streaks(data, streak_params):
-    streaks = []
-    for params in streak_params:
-        center_x, center_y, length, width, angle, magnitude, velocity = params
-        streaks.append((center_x, center_y, length, width, angle, magnitude, velocity))
-
-        brightness = magnitude_to_brightness(magnitude) * np.max(data)  # Adjust brightness based on magnitude
-
-        for w in range(-width//2, width//2 + 1):
+    streaks = [] #initializing an empty list to storethe streak parameters
+    for params in streak_params: #iterating on each set of streaks
+        center_x, center_y, length, width, angle, magnitude, velocity = params #The parameters defined for each streak
+        streaks.append((center_x, center_y, length, width, angle, magnitude, velocity)) #Adding the parameters to the streak list
+        brightness = magnitude_to_brightness(magnitude) * np.max(data)  #convert magnitude to brightness and scale to maximum pixel value
+        for w in range(-width//2, width//2 + 1): #iterate on width of streak
             for l in range(-length//2, length//2 + 1):
                 x = int(center_x + l * np.cos(angle) - w * np.sin(angle))
                 y = int(center_y + l * np.sin(angle) + w * np.cos(angle))
                 if 0 <= x < data.shape[1] and 0 <= y < data.shape[0]:
                     data[y, x] = brightness  # Adjusted brightness
-
     return data, streaks
+
+for w in range(-width//2, width//2 + 1): Iterates over the width of the streak.
+for l in range(-length//2, length//2 + 1): Iterates over the length of the streak.
+x = int(center_x + l * np.cos(angle) - w * np.sin(angle)): Calculates the x-coordinate of the streak pixel.
+y = int(center_y + l * np.sin(angle) + w * np.cos(angle)): Calculates the y-coordinate of the streak pixel.
+if 0 <= x < data.shape[1] and 0 <= y < data.shape[0]: Ensures the pixel coordinates are within the image bounds.
+data[y, x] = brightness: Sets the pixel brightness.
+return data, streaks: Returns the modified data and the list of streaks.
 
 # Generate a single consistent set of asteroid streaks
 streak_params = []
